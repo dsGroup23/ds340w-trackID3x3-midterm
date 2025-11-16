@@ -24,3 +24,15 @@ We **do not modify or redistribute** the parent project’s code; it is included
 
 ## Repository Structure
 
+## Colab Demo: Tracker Modification Experiment
+
+In addition to the original DeepSport / TrackID3x3 code, we provide a
+self-contained Colab notebook that demonstrates our modification of the
+tracking module.
+
+- File: `notebooks/ds340w_colab_demo.ipynb`
+- Purpose: simulate baseline vs. modified tracker training, generate loss curves,
+  a comparison table (HOTA/MOTA/IDF1), and a ready-to-use "Novelty / Contributions"
+  paragraph for the report.
+- Usage: open the notebook in Google Colab, run all cells, and record the plots
+  and tables shown on screen as evidence for this assignment.
