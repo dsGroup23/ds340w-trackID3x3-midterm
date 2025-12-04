@@ -1,0 +1,21 @@
+[2025-06-13 11:19:50,594][tracklab.main][INFO] - Run directory: /work6/k_yamada/TrackID3x3/CAMELTrack/outputs/CAMELTrack/2025-06-13/11-19-50
+[2025-06-13 11:19:50,597][tracklab.main][INFO] - Using device: 'cuda'.
+[2025-06-13 11:19:52,871][tracklab.main][INFO] - ExternalVideo= val set: 1
+[2025-06-13 11:19:54,695][cameltrack.wrappers.bbox_detector.yolo_x_api][INFO] - Loaded YOLOX weights from /home/k_yamada/workspace6/TrackID3x3/BoT-SORT/pretrained/bytetrack_x_mot17.pth.tar
+[2025-06-13 11:20:01,742][cameltrack.cameltrack][INFO] - Loading CAMEL checkpoint from `/work6/k_yamada/TrackID3x3/CAMELTrack/outputs/CAMELTrack/2025-06-13/11-19-50/camel_bbox_app_kps_sportsmot.ckpt`.
+[2025-06-13 11:20:01,746][tracklab.pipeline.module][INFO] - Pipeline: YOLOXBoTSORT -> TopDownMMPose -> KPReId -> CAMELTrack
+[2025-06-13 11:20:01,747][tracklab.main][INFO] - Starting tracking operation on val set.
+[2025-06-13 11:20:01,752][tracklab.datastruct.tracker_state][INFO] - Saving TrackerState to /work6/k_yamada/TrackID3x3/CAMELTrack/states/CAMELTrack-val.pklz
+[2025-06-13 11:20:01,753][tracklab.pipeline.module][INFO] - Pipeline has been validated
+[2025-06-13 11:32:24,365][tracklab.datastruct.tracker_state][INFO] - 0 already exists in /work6/k_yamada/TrackID3x3/CAMELTrack/states/CAMELTrack-val.pklz file
+[2025-06-13 11:32:24,372][tracklab.visualization.visualization_engine][INFO] - Visualization output at : /work6/k_yamada/TrackID3x3/CAMELTrack/outputs/CAMELTrack/2025-06-13/11-19-50/visualization
+[2025-06-13 11:32:24,377][tracklab.datastruct.tracker_state][INFO] - Tracking ended, final TrackerState stats:
+[2025-06-13 11:32:24,378][tracklab.datastruct.tracker_state][INFO] - Total # detections: 12190 (GT=0)
+[2025-06-13 11:32:24,381][tracklab.datastruct.tracker_state][INFO] - Total # detections with track_id: 2626
+[2025-06-13 11:32:24,381][tracklab.datastruct.tracker_state][INFO] - Total # track_ids: 12
+[2025-06-13 11:32:24,382][tracklab.main][INFO] - Starting evaluation.
+[2025-06-13 11:32:24,383][tracklab.wrappers.eval.trackeval_evaluator][INFO] - Starting evaluation using TrackEval library (https://github.com/JonathonLuiten/TrackEval)
+[2025-06-13 11:32:24,394][tracklab.datastruct.tracking_dataset][WARNING] - Dropped 9564 rows with NA values
+[2025-06-13 11:32:24,447][tracklab.wrappers.eval.trackeval_evaluator][INFO] - Tracking predictions saved in ExternalVideo format in eval/pred/ExternalVideo-val/tracklab
+[2025-06-13 11:32:24,449][tracklab.wrappers.eval.trackeval_evaluator][WARNING] - Stopping evaluation because the current split (val) has no ground truth detections.
+[2025-06-13 11:32:24,450][tracklab.main][INFO] - Saved state at : /work6/k_yamada/TrackID3x3/CAMELTrack/states/CAMELTrack-val.pklz

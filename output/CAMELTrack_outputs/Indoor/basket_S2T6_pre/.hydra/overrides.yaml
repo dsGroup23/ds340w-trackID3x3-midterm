@@ -1,0 +1,3 @@
+- dataset.eval_set=val
+- modules.track.checkpoint_path=camel_bbox_app_kps_sportsmot.ckpt
+- dataset.video_path=/home/k_yamada/workspace6/TrackID3x3/videos/Indoor/raw/basket_S2T6_pre.mp4

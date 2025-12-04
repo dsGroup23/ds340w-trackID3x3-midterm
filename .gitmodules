@@ -1,0 +1,3 @@
+[submodule "third_party/deepsport"]
+	path = third_party/deepsport
+	url = https://github.com/gabriel-vanzandycke/deepsport.git

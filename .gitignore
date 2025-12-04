@@ -1,0 +1,9 @@
+# results & local env
+results/*
+!.gitkeep
+.env
+__pycache__/
+*.pyc
+.third_party*
+third_party/deepsport/.venv/
+third_party/deepsport/.uv/
