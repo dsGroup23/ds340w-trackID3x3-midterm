@@ -1,118 +1,413 @@
-# TrackID3x3: A Dataset for 3x3 Basketball Player Tracking and Identification
+# TrackID3x3 – Final Project (DS 340W)
 
-This project provides 3x3 fixed camera footage and a baseline for extracting tracking data from them, and has been accepted for MMSports'25. The paper can be read [here](https://arxiv.org/html/2503.18282v2).
+This repository contains my final project for **DS 340W**.  
+Starting from the public **TrackID3x3 / CAMELTrack** 3×3 basketball tracking code, I built an end-to-end, light-weight pipeline that:
 
+1. **Uses pre-computed tracker outputs** (MOT format) for 3×3 basketball games.  
+2. **Applies a new post-processing step** (trajectory smoothing + short-track filtering) to clean the player and ball tracks.  
+3. **Evaluates tracking quality** with **TI-HOTA** metrics on an indoor 3×3 dataset, and  
+4. **Compares “Baseline vs. OURS”** with summary statistics and a scatter plot.
 
-## TrackID3x3 dataset 
-
-The dataset consists of three subsets: Indoor, captured by indoor fixed cameras; Outdoor, captured by outdoor fixed cameras; and Drone, captured by outdoor drone cameras.
-The videos have bounding boxes of 6 on-court players for all frames and 10 pose keypoints of each player for some frames only.
-The video files and some intermediate product of proposed baseline can be downloaded [here](https://drive.google.com/drive/folders/1aWqMwQKr5xKMjqms7-raYluSlxPsGvwX).
-
-<!-- GIF EMBEDS START -->
-![Indoor](videos/gif/Indoor.gif)
-![Outdoor](videos/gif/Outdoor.gif)
-![Drone](videos/gif/Drone.gif)
-<!-- GIF EMBEDS END -->
-
-## Track-ID task
-This task is a simplified version of Game State Reconstruction and its objective is to extract player tracking data from fixed camera video. In 3x3, only the localization of the court is done manually in this task, the rest is done automatically, and the location and identification of 6 on-court players are extracted.
-
-<!-- GIF EMBEDS START -->
-![Indoor_minimap_drawn](videos/gif/Indoor_minimap_drawn.gif)
-![Outdoor](videos/gif/Outdoor_minimap_drawn.gif)
-<!-- GIF EMBEDS END -->
-
-## Track-ID Baseline
-
-### Installation & Setup
-
-This repository incorporates the following three external projects with modifications.  
-(Please refer to the README of each project for detailed configuration and usage.)
-
-- [CAMELTrack](https://github.com/TrackingLaboratory/CAMELTrack)  
-- [jersey-number-pipeline](https://github.com/mkoshkina/jersey-number-pipeline)  
-- [BoT-SORT](https://github.com/NirAharon/BoT-SORT)  
+The goal is that anyone (instructor / TA) can reproduce the results on a laptop **without running any heavy detection / tracking models**.
 
 ---
 
-**Step 1: Clone this repository**
+## 1. Repository structure
 
-```bash
-git clone https://github.com/your_username/TrackID3x3.git
+At the top level you will see:
+
+```text
+TrackID3x3/
+├── BoT-SORT/                 # Third-party multi-object tracker (not re-run in this project)
+├── CAMELTrack/               # Upstream CAMELTrack detection + tracking code (not re-run)
+├── CAMELTrack_outputs/       # Pre-computed baseline tracker outputs (MOT text files)
+├── anaconda_projects/        # Conda / Anaconda environment helper (optional)
+│   └── db/                   # Environment metadata from my local setup
+├── court_images/             # Court images for homography / visualization (from parent repo)
+├── ground_truth/             # 3×3 tracking ground truth in MOT format
+│   └── Indoor/
+│       └── transformed_MOT_with_attributes/
+├── jersey-number-pipeline/   # Jersey number recognition code (not used in final evaluation)
+├── output/                   # Outputs produced in this project (OURS)
+│   └── CAMELTrack_outputs/
+│       └── Indoor/
+│           ├── filtered_MOT/         # Copy of baseline filtered tracks (for safety)
+│           └── filtered_MOT_smooth/  # ***Our smoothed & cleaned tracks***
+├── script/                   # Helper scripts / notebooks for analysis
+├── videos/                   # Small demo clips / GIFs only (no large .mp4 in Git)
+│   └── gif/
+├── .gitignore
+├── .gitmodules               # For BoT-SORT and CAMELTrack submodules
+├── LICENSE.md
+├── README.md                 # This file
+├── Untitled.ipynb            # Smoothing & saving OURS tracks (see Section 4.2)
+├── Untitled1.ipynb           # TI-HOTA evaluation (Baseline vs. OURS)
+└── Untitled2.ipynb           # Extra analysis / plots (optional)
+
+
+## 2. Dataset
+
+This project is built on top of the **TrackID3x3** 3x3 basketball tracking dataset.
+
+### 2.1 Data used in _this_ repository
+
+For grading and reproduction, **you do NOT need to download any external data**.  
+All the files required to re-run our pipeline are already included in this repo:
+
+- `ground_truth/Indoor/transformed_MOT_with_attributes/`  
+  - Cleaned ground-truth MOT files for the Indoor subset  
+  - Each `.txt` file contains: `frame_id, id, x, y, w, h, conf, cls, vis, empty`
+
+- `output/CAMELTrack_outputs/Indoor/filtered_MOT/`  
+  - Baseline tracker outputs (CAMELTrack) in MOT text format  
+  - Used as **Baseline** prediction in our evaluation
+
+- `output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth/`  
+  - Our **smoothed & cleaned** tracking results  
+  - Generated by `notebooks/Untitled.ipynb` (smoothing) and used as **OURS** prediction
+
+- `court_images/`  
+  - Court reference images used when computing court coordinates / TI-HOTA metrics
+
+> 🚫 Raw video files and very large zip files are **not** stored in this repo because of GitHub’s 100 MB per-file limit.  
+> They are **not required** to re-run our experiments or reproduce our tables/figures.
+
+### 2.2 Original TrackID3x3 dataset (reference)
+
+The processed MOT files above were derived from the **TrackID3x3** dataset:
+
+> Kazuhiro Yamada et al.,  
+> *“TrackID3x3: A Dataset and Algorithm for Multi-Player Tracking with Identification and Pose Estimation in 3x3 Basketball Full-court Videos.”*   
+
+According to the paper, the official dataset and code will be hosted at:
+
+- GitHub: `https://github.com/open-starlab/TrackID3x3`   
+
+If someone wants to work with the **original full-court videos** (Indoor / Outdoor / Drone),  
+they should request or download the data from the official TrackID3x3 project and then follow
+our preprocessing steps to obtain the MOT text files used here. https://drive.google.com/drive/folders/1aWqMwQKr5xKMjqms7-raYluSlxPsGvwX
+and you can download the original datasets here.
+
+2. Conda environment & dependencies
+
+The project was developed in Python 3.10 on macOS with a standard data-science stack.
+The minimal dependencies needed to run the notebooks are:
+
+numpy
+
+pandas
+
+matplotlib
+
+opencv-python (imported as cv2)
+
+jupyter
+
+You can create a clean Conda environment like this:
+
+# From anywhere
+conda create -n trackid3x3 python=3.10 -y
+conda activate trackid3x3
+
+# Basic packages
+pip install numpy pandas matplotlib opencv-python jupyter
+
+
+If you prefer, you can also use the environment metadata in anaconda_projects/db as a reference, but it is not required.
+
+3. Data overview
+3.1 Ground truth (Indoor 3×3)
+
+Location: ground_truth/Indoor/transformed_MOT_with_attributes/
+
+Format: MOT text files, one file per video.
+
+Columns (no header):
+
+frame_id, id, x, y, w, h, conf, cls, vis, empty
+
+
+frame_id: frame index
+
+id: object ID
+
+x, y, w, h: bounding box (top-left + width/height) in image coordinates
+
+conf: detection confidence
+
+cls: class label
+
+vis: visibility flag
+
+empty: reserved / unused column
+
+These files are used as ground truth for TI-HOTA evaluation.
+
+3.2 Baseline tracker outputs
+
+Location: CAMELTrack_outputs/Indoor/filtered_MOT/
+
+Content: MOT-style tracker outputs produced by the upstream CAMELTrack pipeline.
+
+Same column format as above.
+
+These files represent the baseline tracking results (without my post-processing).
+
+3.3 Our smoothed & cleaned outputs (OURS)
+
+Location: output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth/
+
+These are created from the baseline outputs by running my smoothing notebook (Section 4.2).
+
+Changes compared to baseline:
+
+Temporal smoothing of the (x, y) coordinates using a centered rolling mean (window=5).
+
+Short-track filtering: tracks shorter than 10 frames are removed.
+
+Outputs are written back to MOT text files with the same structure and file names as the baseline.
+
+These files are used as the OURS predictions in the TI-HOTA evaluation.
+
+
+4. How to reproduce my results
+
+All steps below assume you are in the repo root, e.g.
+
+cd path/to/TrackID3x3
+conda activate trackid3x3
+
+4.1 Check data paths in the notebooks
+
+For portability, the notebooks use relative paths from the repo root.
+In each notebook, the main directories should look like:
+
+# Example used in my notebooks
+
+GT_FOLDER  = "./ground_truth/Indoor/transformed_MOT_with_attributes"
+BASE_PRED_FOLDER = "./CAMELTrack_outputs/Indoor/filtered_MOT"
+OURS_PRED_FOLDER = "./output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth"
+
+
+If you ever move the project, please just make sure these paths are still correct.
+
+4.2 Step 1 – Generate smoothed tracks (OURS)
+
+Notebook: Untitled.ipynb
+(You can rename it to 01_smooth_tracks.ipynb if you like; the logic is described here.)
+
+Launch Jupyter from the repo root:
+
+jupyter notebook
+
+
+Open Untitled.ipynb.
+
+Run all cells from top to bottom. The key parts of the notebook are:
+
+import os
+import glob
+import pandas as pd
+
+IN_DIR  = "./CAMELTrack_outputs/Indoor/filtered_MOT"
+OUT_DIR = "./output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth"
+
+os.makedirs(OUT_DIR, exist_ok=True)
+
+mot_files = glob.glob(os.path.join(IN_DIR, "*.txt"))
+print(f"Found {len(mot_files)} MOT files.")
+
+
+For each MOT file, the notebook:
+
+Reads it into a pandas.DataFrame.
+
+Sorts rows by ("id", "frame_id").
+
+Applies a rolling mean with window=5 on the x and y columns (per track ID).
+
+Drops tracks shorter than 10 frames.
+
+Writes the result to OUT_DIR with the same file name.
+
+At the end you should see a log similar to:
+
+Found 40 MOT files.
+Processed basket_S3T6_pre.txt -> ./output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth/basket_S3T6_pre.txt
+...
+All files processed. Smoothed results saved to ./output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth
+
+
+After this step, output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth/ will contain our cleaned/smoothed MOT files.
+
+4.3 Step 2 – Compute TI-HOTA metrics (Baseline & OURS)
+
+Notebook: Untitled1.ipynb
+(You can rename it to 02_compute_ti_hota.ipynb.)
+
+This notebook evaluates both the baseline and our smoothed tracks against the same ground truth using TI-HOTA.
+
+Core logic (simplified):
+
+import os
+import glob
+import numpy as np
+
+from ti_hota_utils import load_video, compute_ti_hota  # provided by parent repo
+
+GT_FOLDER      = "./ground_truth/Indoor/transformed_MOT_with_attributes"
+BASE_PRED_DIR  = "./CAMELTrack_outputs/Indoor/filtered_MOT"
+OURS_PRED_DIR  = "./output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth"
+tau = 100
+
+gt_files = glob.glob(os.path.join(GT_FOLDER, "*.txt"))
+
+baseline_results = []   # list of metric dicts, one per video
+ours_results      = []  # list of metric dicts, one per video
+frame_counts      = []  # number of frames per video
+
+
+For each gt_file:
+
+It finds the corresponding prediction file in the baseline folder and in the OURS folder.
+
+Uses load_video(gt_file, pred_file) to build per-frame structures.
+
+Calls compute_ti_hota(frames, tau) to get a metric dictionary with keys:
+
+TI-HOTA
+
+TI-DetA
+
+TI-AssA
+
+TI-TP, TI-FP, TI-FN
+
+Prints per-video results and appends the metrics to baseline_results / ours_results.
+
+At the bottom, the notebook aggregates mean ± standard deviation across all videos.
+You will see text similar to:
+
+===== Indoor Videos (Baseline, τ=100) : Mean ± SD =====
+Frame Count: 179.38 (std: 64.77)
+TI-HOTA: 0.0XXX (std: 0.0XXX)
+TI-DetA: 0.0XXX (std: 0.0XXX)
+TI-AssA: 0.0XXX (std: 0.0XXX)
+TI-TP:   XXXX.XX (std: XXX.XX)
+TI-FP:   XXXX.XX (std: XXX.XX)
+TI-FN:   XXXX.XX (std: XXX.XX)
+
+===== Indoor Videos (OURS, τ=100) : Mean ± SD =====
+Frame Count: 179.38 (std: 64.77)
+TI-HOTA: 0.0226 (std: 0.0173)   # example numbers
+...
+
+
+These tables are what I use in the report to summarize the effect of my smoothing/cleaning step.
+
+4.4 Step 3 – Scatter plot: Per-video TI-HOTA (Baseline vs OURS)
+
+Notebook: Untitled2.ipynb
+(You can rename it to 03_plot_baseline_vs_ours.ipynb.)
+
+This notebook assumes that baseline_results and ours_results have already been computed (e.g., by re-running the relevant code or by re-importing the utility functions). It then builds a scatter plot comparing per-video TI-HOTA:
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+baseline_dict = {name: m for name, m in baseline_results}
+ours_dict     = {name: m for name, m in ours_results}
+
+common_names = sorted(set(baseline_dict.keys()) & set(ours_dict.keys()))
+
+base_hota = [baseline_dict[n]["TI-HOTA"] for n in common_names]
+ours_hota = [ours_dict[n]["TI-HOTA"]     for n in common_names]
+
+fig, ax = plt.subplots(figsize=(5, 5))
+ax.scatter(base_hota, ours_hota)
+
+min_val = min(base_hota + ours_hota)
+max_val = max(base_hota + ours_hota)
+ax.plot([min_val, max_val], [min_val, max_val], linestyle="--")  # y = x line
+
+ax.set_xlabel("Baseline TI-HOTA")
+ax.set_ylabel("OURS TI-HOTA")
+ax.set_title("Per-video TI-HOTA: Baseline vs OURS")
+
+plt.tight_layout()
+plt.show()
+
+
+If our smoothing step is helpful, points that lie above the diagonal line correspond to videos where OURS has higher TI-HOTA than the baseline.
+
+
+5. What is new in this project (relative to the parent GitHub)
+
+The original TrackID3x3 / CAMELTrack repository focused on:
+
+Building a full pipeline from detection → tracking → court homography → downstream analytics.
+
+Providing pre-trained models and baseline tracking outputs.
+
+Our contributions in this final project are:
+
+A post-processing module for tracker outputs
+
+Implemented in Untitled.ipynb (smoothing + short-track filtering).
+
+Designed to be lightweight and easy to run on any laptop.
+
+A TI-HOTA evaluation pipeline
+
+Reads both baseline and OURS MOT files.
+
+Outputs per-video and dataset-level metrics (TI-HOTA, TI-DetA, TI-AssA, TI-TP, TI-FP, TI-FN).
+
+Implemented entirely in Python using NumPy/Pandas, leveraging helper functions from the parent repo.
+
+Baseline vs OURS analysis & visualization
+
+Aggregated mean ± std statistics for the indoor 3×3 dataset.
+
+A per-video scatter plot (Baseline TI-HOTA vs OURS TI-HOTA) for visual inspection of improvements / regressions.
+
+All of these additions are contained in this repository and can be reproduced by following Sections 4.2–4.4.
+
+6. How to quickly verify that everything works
+
+For grading convenience, here is the shortest path to check that the code runs:
+
+# 1. Clone and enter the repo
+git clone https://github.com/dsGroup23/TrackID3x3.git
 cd TrackID3x3
-```
+
+# 2. Create / activate environment
+conda create -n trackid3x3 python=3.10 -y
+conda activate trackid3x3
+pip install numpy pandas matplotlib opencv-python jupyter
+
+# 3. Run Jupyter
+jupyter notebook
 
 
-**Step 2: Setup of each sub-project**
+Then:
 
-*Recommendation: Create a Python 3.10 virtual environment for each sub-project and install the necessary libraries.*
-- CAMELTrack: Please install libraries according to corresponding README.
-- jersey-number-pipeline: Please install jersey-number-pipeline/requirement.txt and follow the instructions in the corresponding README to download the model weights (in the paper, the PARSeq and LegibilityClassifier weights were trained in Hockey)
-- BoT-SORT: Please download the YOLOX weights from the [ByteTrack repository](https://github.com/FoundationVision/ByteTrack) and place them in the pretrained directory (the paper reports results using the bytetrack_x_mot17.pth.tar).
+Open Untitled.ipynb, run all cells – this will create smoothed MOT files in
+output/CAMELTrack_outputs/Indoor/filtered_MOT_smooth/.
 
+Open Untitled1.ipynb, run all cells – this will print TI-HOTA metrics for both
+Baseline and OURS.
 
+(Optional) Open Untitled2.ipynb to generate the Baseline vs. OURS scatter plot.
 
-### Execution 
-- CAMELTrack:
-  -  Execute run.sh in CAMELTrack directory
-      - run.sh is for execution for multiple videos
-      - By default, YOLOX built into BoT-SORT is used for person detection
-      - The execution results at the baseline in the paper can be downloaded from [here](https://drive.google.com/drive/folders/1aWqMwQKr5xKMjqms7-raYluSlxPsGvwX).
-- Rule-based Heuristic Methods:
-  - Execute script/Indoor/rule-based_heuristic_methods.ipynb or script/Outdoor/rule-based_heuristic_methods.ipynb 
-  - By default, processing is performed on output/CAMELTrack_outputs (i.e., those that can be downloaded from Google Drive).
-- jersey-number-pipeline (Only Outdoor):
-  - Execute run.sh in jersey-number-pipeline directory
-  - Note that each tracklet's bbox cropped .png file must be organized into a directory for each video in jersey-number-pipeline/data/Outdoor/test/images. (e.g., jersey-number-pipeline/data/Outdoor/test/images/IMG_0104_1/track1/IMG_0104_1_frame1_track1_cropped.png).
-    - You can crop using script/Outdoor/crop_images.py
-  - The execution results (except .png files) in the paper can be downloaded from [here](https://drive.google.com/drive/folders/1aWqMwQKr5xKMjqms7-raYluSlxPsGvwX)
-- Attributes Identification:
-  - Indoor:
-    - Just run script/Indoor/add_attributes_pred.ipynb
-  - Outdoor:
-    - First, run script/Outdoor/organization_torso_images.py to organize the images of the torso region.
-    - Next, run script/Outdoor/calculate_color_hist.py to calculate the color histogram for each tracklet.
-      - the .npy files containing the color histograms in the paper can be downloaded from [here](https://drive.google.com/drive/folders/1aWqMwQKr5xKMjqms7-raYluSlxPsGvwX)
-    - Finally, use the calculated color histogram and final_results.json (output from jersey-number-pipeline) to run script/Outdoor/add_attributes.ipynb
-- Calculation of TI-HOTA:
-  - Just run script/compute_TI-HOTA.ipynb
+If these three steps run without error and produce the printed tables & plot, the project has been successfully reproduced.
 
+7. Acknowledgements
 
+Original tracking & dataset code from the public TrackID3x3 / CAMELTrack and BoT-SORT repositories.
 
+TI-HOTA metric implementation based on the official HOTA / TI-HOTA code provided by the authors.
 
-## Citation
-
-If you use this repository for your research or wish to refer to our contributions, please cite the following paper:
-
-[**Analyzing coordinated group behavior through role-sharing: a pilot study in female 3-on-3 basketball with practical application**](https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2025.1513982/full)
-
-[**Enhanced Multi-Object Tracking Using Pose-based Virtual Markers in 3x3 Basketball**](https://arxiv.org/abs/2412.06258)
-
-[**TrackID3x3: A Dataset for 3x3 Basketball Player Tracking and Identification**](https://arxiv.org/abs/2503.18282)
-
-```bibtex
-@article{ichikawa2024analyzing,
-  title={Analyzing coordinated group behavior through role-sharing: A pilot study in female 3-on-3 basketball with practical application},
-  author={Ichikawa, Jun and Yamada, Masatoshi and Fujii, Keisuke},
-  journal={Frontiers in Sports and Active Living},
-  volume={7},
-  pages={1513982},
-  year={2024},
-  publisher={Frontiers}
-}
-@article{yin2024enhanced,
-  title={Enhanced Multi-Object Tracking Using Pose-based Virtual Markers in 3x3 Basketball},
-  author={Yin, Li and Yeung, Calvin and Hu, Qingrui and Ichikawa, Jun and Azechi, Hirotsugu and Takahashi, Susumu and Fujii, Keisuke},
-  journal={arXiv preprint arXiv:2412.06258},
-  year={2024}
-}
-@article{yamada2025trackid3x3,
-  title={TrackID3x3: A Dataset for 3x3 Basketball Player Tracking and Identification},
-  author={Yamada, Kazuhiro and Yin, Li and Hu, Qingrui and Ding, Ning and Iwashita, Shunsuke and Ichikawa, Jun and Kotani, Kiwamu and Yeung, Calvin and Fujii, Keisuke},
-  journal={arXiv preprint arXiv:2503.18282v2},
-  year={2025}
-}
-```
+DS 340W course staff for guidance on structuring reproducible data-science projects.
 
 
